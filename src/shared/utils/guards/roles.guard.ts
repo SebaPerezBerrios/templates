@@ -49,11 +49,6 @@ export class RolesAuthGuard implements CanActivate {
       return { role, action };
     });
 
-    some(userRoles, ({ role, action }) => {
-      const foundRole = roles[role];
-      return foundRole?.has('*') || foundRole?.has(action);
-    });
-
     return {
       canAccess: some(userRoles, ({ role, action }) => {
         const foundRole = roles[role];

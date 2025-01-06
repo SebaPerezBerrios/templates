@@ -9,7 +9,10 @@ export const TENANT_CONNECTION_MAP = 'TENANT_CONNECTION_MAP';
 
 export const AVAILABLE_TENANT_SET = 'AVAILABLE_TENANT_SET';
 
-export type TenantConnectionMap = Map<string, { connection: Connection; models: Map<string, Model<unknown>> }>;
+export type TenantConnectionMap = Map<
+  string,
+  { connection: Connection; models: Map<string, Model<any, unknown, unknown, unknown, any, any>> }
+>;
 
 export type AvailableTenantSet = Set<string>;
 export const tenantSet: AvailableTenantSet = new Set();

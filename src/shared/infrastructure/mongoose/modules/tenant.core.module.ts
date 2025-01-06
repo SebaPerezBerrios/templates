@@ -1,4 +1,4 @@
-import { DynamicModule, Global, Module, Provider } from '@nestjs/common';
+import { DynamicModule, Global, InternalServerErrorException, Module, Provider } from '@nestjs/common';
 import {
   AVAILABLE_TENANT_SET,
   MONGOOSE_TENANT_CONFIG,
@@ -68,10 +68,16 @@ export class MongooseTenantCoreModule {
     return {
       provide: MONGOOSE_TENANT_CONFIG,
       useFactory: (configService: ConfigService): MongooseTenantConfig => {
+        const mongooseConfig = configService.get<{ host: string; db_name: string; tenant_prefix: string }>('database');
+
+        if (!mongooseConfig) {
+          throw new InternalServerErrorException('Mongodb config missing');
+        }
+
         return {
           ...config,
-          database_prefix: configService.get<string>('database.tenant_prefix'),
-          db_uri: configService.get<string>('database.host'),
+          database_prefix: mongooseConfig.tenant_prefix,
+          db_uri: mongooseConfig.host,
         };
       },
       inject: [ConfigService],

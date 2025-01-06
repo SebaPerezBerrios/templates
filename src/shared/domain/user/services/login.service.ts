@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserRepositoryService } from './repository.service';
-import { UserCreateDto, UserLoginDto } from '../dtos';
+import { UserLoginDto } from '../dtos';
 import { JwtService } from '@nestjs/jwt';
 import { comparePasswords } from '../../../utils/common';
 import { JWTUserData, UserEntity } from '../../../utils/interfaces';
@@ -11,7 +11,6 @@ export class LoginService {
   constructor(
     private readonly userRepositoryService: UserRepositoryService,
     private readonly jwtService: JwtService,
-    @Inject('TOKEN_EXPIRATION_MINUTES') private readonly tokenExpirationMinutes: number,
     @Inject(JWT_KEYS) private readonly jwtKeys: JwtKeys
   ) {}
 
@@ -34,20 +33,7 @@ export class LoginService {
   async refreshToken(user: UserEntity) {
     const { _id, auth_scopes, role_id } = user;
 
-    return this.createJWT({ _id, auth_scopes, role_id });
-  }
-
-  async create(userCreateDto: UserCreateDto) {
-    const { _id, auth_scopes, role } = await this.userRepositoryService.create(userCreateDto);
-
-    return {
-      _id: _id.toString(),
-      name: userCreateDto.name,
-      email: userCreateDto.email,
-      role_id: role._id.toString(),
-      role,
-      auth_scopes,
-    };
+    return this.createJWT({ _id: _id.toString(), auth_scopes, role_id: role_id?.toString() });
   }
 
   private createJWT(userData: JWTUserData, first_login = false) {
@@ -59,7 +45,7 @@ export class LoginService {
       expiresIn: 120 * 60,
     };
 
-    const jsonWebToken = this.jwtService.sign(userData, { ...config, algorithm: 'RS256' });
+    const jsonWebToken = this.jwtService.sign(userData, { ...config, algorithm: 'RS512' });
     return {
       token_type: 'Bearer',
       access_token: jsonWebToken,
@@ -69,7 +55,7 @@ export class LoginService {
   }
 
   private getExpiresIn(): number {
-    const expirationInSeconds = Math.floor(this.tokenExpirationMinutes * 60);
+    const expirationInSeconds = this.jwtKeys['user']['expiration_minutes'] * 60;
     const expiresIn = Math.floor(Date.now() / 1000) + expirationInSeconds;
     return expiresIn;
   }

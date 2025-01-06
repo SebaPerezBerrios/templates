@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ZodSchema, ZodTypeDef } from 'zod';
 import Redis from 'ioredis';
 
@@ -26,12 +26,8 @@ export class RedisService {
     ttl: number
   ): Promise<T> {
     try {
-      const res = await this.getParsed<T, D>(key, schema);
-      if (res.success) {
-        return res.data as T;
-      } else {
-        Logger.warn(`Parsing failed for cached value with key ${key}`);
-      }
+      const value = await this.get(key);
+      return schema.parse(value);
     } catch {
       const newValue = await fn();
       await this.save(key, newValue, ttl);
@@ -60,12 +56,5 @@ export class RedisService {
       throw new NotFoundException(`Key ${key} not found`);
     }
     return JSON.parse(value) as T;
-  }
-
-  async getParsed<T, D extends ZodTypeDef>(key: string, schema: ZodSchema<T, D, unknown>) {
-    const value = await this.redisService.get(key);
-    if (value) {
-      return schema.safeParse(JSON.parse(value));
-    }
   }
 }

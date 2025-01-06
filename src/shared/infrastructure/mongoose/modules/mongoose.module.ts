@@ -1,4 +1,4 @@
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, InternalServerErrorException, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -9,10 +9,17 @@ export class MongooseRootModule {
       module: MongooseRootModule,
       imports: [
         MongooseModule.forRootAsync({
-          useFactory: async (configService: ConfigService) => ({
-            uri: configService.get<string>('database.host'),
-            dbName: configService.get<string>('database.db_name'),
-          }),
+          useFactory: async (configService: ConfigService) => {
+            const mongooseConfig = configService.get<{ host: string; db_name: string }>('database');
+
+            if (!mongooseConfig) {
+              throw new InternalServerErrorException('Mongodb config missing');
+            }
+            return {
+              uri: mongooseConfig.host,
+              dbName: mongooseConfig.db_name,
+            };
+          },
           inject: [ConfigService],
         }),
       ],

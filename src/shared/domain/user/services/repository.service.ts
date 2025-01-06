@@ -5,11 +5,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { User, UserCachedDocument, UserDocument } from '../models/user.model';
 import { RoleRepositoryService } from './role.repository';
 import { Role } from '../models/role.model';
-import { UserAssignRoleDto, UserCreateDto, UsersGetDto } from '../dtos';
+import { UserCreateDto, UsersGetDto } from '../dtos';
 import { UserUpdateDto } from '../dtos/user/update.user.dto';
 import { Tenant } from '../../tenant';
 import { filterObjectToQuery, PlainDocument, sortObjectToQuery } from '../../../utils/types';
-import { hashPassword, randomString } from '../../../utils/common';
+import { hashPassword } from '../../../utils/common';
 import { JWTUserData } from '../../../utils/interfaces';
 import { RedisService } from '../../../infrastructure/redis';
 
@@ -60,38 +60,32 @@ export class UserRepositoryService {
     return { _id, auth_scopes: this.roleRepositoryService.calculateScopes(userRole), role: userRole };
   }
 
-  async update(userId: Types.ObjectId, user: UserUpdateDto) {
-    const existingUser = await this.UserModel.findOne({
-      _id: userId,
-    }).lean();
-
-    if (!existingUser) {
-      throw new NotFoundException(`User ${userId} not found`);
+  async update(userId: Types.ObjectId, userUpdateDto: UserUpdateDto) {
+    if (userUpdateDto.password) {
+      userUpdateDto.password = await hashPassword(userUpdateDto.password);
     }
 
-    const updateData: Partial<UserUpdateDto> = { ...user };
-
-    if (user.password) {
-      updateData.password = await hashPassword(user.password);
-    }
-
-    const userUpdated = await this.UserModel.findOneAndUpdate(
+    const user = await this.UserModel.findOneAndUpdate(
       { _id: userId },
       {
-        ...updateData,
+        ...userUpdateDto,
       },
       { new: true }
     )
       .select('-password')
       .lean();
 
-    return userUpdated;
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    return user;
   }
 
   async getById(userId: Types.ObjectId) {
     const userDocument = await this.UserModel.aggregate([
       { $match: { _id: userId } },
-      ...this.makeQuery(),
+      ...this.userDataAggregate(),
       { $unset: ['password'] },
     ]);
 
@@ -123,12 +117,10 @@ export class UserRepositoryService {
     role_id: Types.ObjectId;
     is_active?: boolean;
   }) {
-    const password = user.password ? user.password : randomString(32);
-
     const userDocument = await this.UserModel.create({
       ...user,
       is_active,
-      password: await hashPassword(password),
+      password: await hashPassword(user.password),
       role_id,
     });
 
@@ -137,8 +129,8 @@ export class UserRepositoryService {
 
   async getUserData(payload: JWTUserData) {
     const [user]: Omit<UserAggregate, 'password'>[] = await this.UserModel.aggregate([
-      { $match: { _id: new Types.ObjectId(payload._id) } },
-      ...this.makeQuery(),
+      { $match: { _id: new Types.ObjectId(payload._id), is_active: true } },
+      ...this.userDataAggregate(),
       { $unset: ['password'] },
     ]);
 
@@ -160,7 +152,10 @@ export class UserRepositoryService {
   }
 
   async getUserDataLogin(email: string): Promise<UserAggregate & { auth_scopes: string[] }> {
-    const [user]: UserAggregate[] = await this.UserModel.aggregate([{ $match: { email } }, ...this.makeQuery()]);
+    const [user]: UserAggregate[] = await this.UserModel.aggregate([
+      { $match: { email } },
+      ...this.userDataAggregate(),
+    ]);
 
     if (!user) {
       throw new NotFoundException(`User ${email} not found`);
@@ -170,17 +165,8 @@ export class UserRepositoryService {
     return { ...user, auth_scopes };
   }
 
-  async assignRole(userAssignRoleDto: UserAssignRoleDto) {
-    const { user_id, role_id } = userAssignRoleDto;
-
-    const role = await this.roleRepositoryService.getById(role_id);
-
-    await this.UserModel.findOneAndUpdate({ _id: user_id }, { role_id: role._id }).lean();
-  }
-
-  private makeQuery(): PipelineStage[] {
+  private userDataAggregate(): PipelineStage[] {
     return [
-      { $match: { is_active: true } },
       {
         $lookup: {
           from: 'roles',
@@ -189,7 +175,18 @@ export class UserRepositoryService {
           as: 'role',
         },
       },
-      { $unwind: { path: '$role', preserveNullAndEmptyArrays: false } },
+      {
+        $unwind: { path: '$role', preserveNullAndEmptyArrays: true },
+      },
+
+      {
+        $lookup: {
+          from: 'tenants',
+          localField: 'tenant_ids',
+          foreignField: '_id',
+          as: 'tenants',
+        },
+      },
     ];
   }
 
@@ -237,28 +234,7 @@ export class UserRepositoryService {
           },
         },
       ],
-      map: [
-        {
-          $lookup: {
-            from: 'roles',
-            localField: 'role_id',
-            foreignField: '_id',
-            as: 'role',
-          },
-        },
-        {
-          $unwind: { path: '$role', preserveNullAndEmptyArrays: true },
-        },
-
-        {
-          $lookup: {
-            from: 'tenants',
-            localField: 'tenant_ids',
-            foreignField: '_id',
-            as: 'tenants',
-          },
-        },
-      ],
+      map: this.userDataAggregate(),
     };
   }
 }

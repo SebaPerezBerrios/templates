@@ -86,12 +86,9 @@ export function makeQuery<T extends { [k: string]: ZodOptional<ZodTypeAny> | Zod
     limit: z.number({ coerce: true }).default(defaultLimit || 10),
     offset: z.number({ coerce: true }).default(defaultOffset || 0),
 
-    filter: filter
-      .partial()
-      .extend({ filter_type: filterType })
-      .transform((arg) => {
-        return _.omitBy(arg, (value) => _.isUndefined(value) || _.isNull(value)) as typeof arg;
-      }),
+    filter: filter.extend({ filter_type: filterType }).transform((arg) => {
+      return _.omitBy(arg, (value) => _.isUndefined(value) || _.isNull(value)) as typeof arg;
+    }),
     sort: z
       .object(_.fromPairs(_.map(sortFields, (key) => [key, sortField])))
       .partial()

@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { JWTUserData } from '../../../utils/interfaces';
 import { UserRepositoryService } from './repository.service';
 import { RoleRepositoryService } from './role.repository';
-import { RoleCreateDto, RoleUpdateDto, UserAssignRoleDto, UserCreateDto, UsersGetDto } from '../dtos';
+import { RoleCreateDto, RoleUpdateDto, UserCreateDto, UsersGetDto } from '../dtos';
 import { UserUpdateDto } from '../dtos/user/update.user.dto';
 import * as _ from 'lodash';
 
@@ -18,8 +18,8 @@ export class UserDomainService {
     return await this.userRepositoryService.create(userCreateDto);
   }
 
-  async update(userId: Types.ObjectId, userCreateDto: UserUpdateDto) {
-    return await this.userRepositoryService.update(userId, userCreateDto);
+  async update(userId: Types.ObjectId, userUpdateDto: UserUpdateDto) {
+    return await this.userRepositoryService.update(userId, userUpdateDto);
   }
 
   async search(query: UsersGetDto) {
@@ -54,10 +54,6 @@ export class UserDomainService {
         return tenantName;
       },
     };
-  }
-
-  async assignRole(userAssignRoleDto: UserAssignRoleDto) {
-    return await this.userRepositoryService.assignRole(userAssignRoleDto);
   }
 
   async deleteRole(roleId: Types.ObjectId) {

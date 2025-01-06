@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as _ from 'lodash';
@@ -59,13 +59,13 @@ export class TenantService {
     return tenant;
   }
 
-  async addTenant(createTenantDto: TenantCreateDto) {
-    const tenant = await this.TenantModel.findOneAndUpdate(
-      { ...createTenantDto, is_active: true },
-      { upsert: true, new: true }
-    ).lean();
+  async create(createTenantDto: TenantCreateDto) {
+    const existingTenant = await this.TenantModel.findOne({ name: createTenantDto.name }).lean();
+    if (existingTenant) {
+      throw new BadRequestException(`Tenant ${existingTenant.name} already exists`);
+    }
 
-    return tenant;
+    return (await this.TenantModel.create(createTenantDto)).toObject();
   }
 
   async update(tenantId: Types.ObjectId, tenantUpdateDto: TenantUpdateDto): Promise<PlainDocument<Tenant>> {
