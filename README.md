@@ -23,8 +23,20 @@
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
 ## Description
+Template project to maintain useful code snippets, these include:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Multitenant environment using [default injection scopes](https://docs.nestjs.com/fundamentals/injection-scopes) instead of request based injection, these allow for querying domain aggregates in different tenants (for example a user having access to multiple tenants).
+- smart cache validation using Zod, allowing data validation and transformation into domain values instead of relying on plain JSON.
+- Sum types (Tagged unions) using Zod and ts-pattern which allow expressive and functional data based logic flows.
+- Hierarchical role based ACL (```resource.action```)
+- Config module allowing for easy module initialization
+- Request query to db query transformation
+- Reactive pattern functions to make use of database cursors to handle large volume of data, also channel resources (useful for websocket use cases).
+
+next steps
+
+- Helper modules to use bulk consumption of Kafka topics using [KafkaJS](https://kafka.js.org/) ```eachBatch``` feature
+ 
 
 ## Project setup
 
@@ -58,42 +70,30 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Deployment
+## Local Kubernetes deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Key resources are found on ```kubernetes-config``` folder, using [kind](https://kind.sigs.k8s.io/) to create a local K8s environment, using a [Load Balancer](https://github.com/kubernetes-sigs/cloud-provider-kind) with NGINX Ingress to allow external use as defined by ```cluster_config.yaml``` file, also using path rewrite to allow transparent API routes inside a prefix ```nest-api```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Build and publish to local registry
 
-```bash
-$ npm install -g mau
-$ mau deploy
+- Build application ```docker build -t nestjs-app .```
+- Tag image ```docker tag nestjs-app:latest localhost:5001/nestjs-app:latest```
+- Publish to [local registry](https://kind.sigs.k8s.io/docs/user/local-registry/) ```docker push localhost:5001/nestjs-app:latest```
+
+## Secrets
+Run ```kubectl create secret generic secrets-store``` to create the secret container that provides the environment variables at runtime.
+
+Add these data fields, all field values should be base 64 encoded.
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+data:
+  DB_NAME: <mongodb main database name>
+  DB_URI: <mongodb uri>
+  TENANT_PREFIX: <mongodb multitenant name prefix>
+  REDIS_URI: <redis service url>
+  REDIS_USERNAME: <redis username>
+  REDIS_PASSWORD: <redis service password>
+  TENANT_PREFIX: <tenant prefix>
+  USER_JWT_EXPIRATION: <token expiration in minutes>
+  USER_JWT_PRIVATE:<private RSA>
+  USER_JWT_PUBLIC: <public RSA>
+```

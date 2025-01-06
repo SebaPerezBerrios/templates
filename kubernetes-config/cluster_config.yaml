@@ -1,0 +1,46 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nestjs-app
+  labels:
+    app: api-service
+spec:
+  containers:
+    - name: nestjs-app
+      image: localhost:5001/nestjs-app:latest
+      envFrom:
+        - secretRef:
+            name: secrets-store
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: api-service
+  ports:
+    # Default port used by the image
+    - port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: rewrite
+  namespace: default
+spec:
+  rules:
+    - http:
+        paths:
+          - pathType: ImplementationSpecific
+            path: /nest-api(/|$)(.*)
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 8080
+---

@@ -215,9 +215,8 @@ export class UserRepositoryService {
           ? { $text: { $search: text.term } }
           : {
               $or: [
-                { name: { $regex: new RegExp(`${text.term}`), $options: 'i' } },
-                { last_name: { $regex: new RegExp(`${text.term}`), $options: 'i' } },
-                { email: { $regex: new RegExp(`${text.term}`), $options: 'i' } },
+                { email: { $regex: new RegExp(text.term), $options: 'i' } },
+                { name: { $regex: new RegExp(text.term), $options: 'i' } },
               ],
             }
     );
