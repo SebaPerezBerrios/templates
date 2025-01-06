@@ -11,6 +11,7 @@ export default () => ({
     username: process.env.REDIS_USERNAME || 'default',
     password: process.env.REDIS_PASSWORD || '',
   },
+  brokers: process.env.BROKERS || '["127.0.0.1:9092"]',
   auth: {
     user: {
       public_key: process.env.USER_JWT_PUBLIC || '',

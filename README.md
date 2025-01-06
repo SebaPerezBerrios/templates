@@ -32,9 +32,6 @@ Template project to maintain useful code snippets, these include:
 - Config module allowing for easy module initialization
 - Request query to db query transformation
 - Reactive pattern functions to make use of database cursors to handle large volume of data, also channel resources (useful for websocket use cases).
-
-next steps
-
 - Helper modules to use bulk consumption of Kafka topics using [KafkaJS](https://kafka.js.org/) ```eachBatch``` feature
  
 
@@ -96,4 +93,5 @@ data:
   USER_JWT_EXPIRATION: <token expiration in minutes>
   USER_JWT_PRIVATE:<private RSA>
   USER_JWT_PUBLIC: <public RSA>
+  BROKERS: <broker list>
 ```
